@@ -39,12 +39,11 @@ public class SecurityConfiguration {
                 )
                 .authorizeHttpRequests(
                         authorize -> {
-                            authorize.requestMatchers("/api/auth/**").permitAll();
-                            authorize.anyRequest().authenticated();
+                            authorize.requestMatchers("/api/auth/**").permitAll()
+                            .anyRequest().authenticated();
                         })
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
 
         return http.build();
     }
