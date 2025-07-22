@@ -31,4 +31,11 @@ public class AuthenticationController {
         return ResponseEntity.ok(authenticationService.loginUser(loginUserDto));
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<String> logoutUser() {
+        System.out.println("dziala");
+        authenticationService.logout();
+        return ResponseEntity.ok("Successfully logged out");
+    }
+
 }

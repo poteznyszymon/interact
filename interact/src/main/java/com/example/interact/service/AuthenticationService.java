@@ -15,6 +15,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class AuthenticationService {
 
@@ -22,17 +24,20 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final ActiveUserService activeUserService;
 
     public AuthenticationService(
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
             JwtService jwtService,
-            UserRepository userRepository
+            UserRepository userRepository,
+            ActiveUserService activeUserService
     ) {
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userRepository = userRepository;
+        this.activeUserService = activeUserService;
     }
 
     public LoginResponse registerUser(RegisterUserDto registerUserDto) {
@@ -64,6 +69,8 @@ public class AuthenticationService {
 
         String token = jwtService.generateToken(user);
 
+        activeUserService.addActiveUser(user.getUuid());
+
         return new LoginResponse(token, jwtService.getExpirationTime());
 
     }
@@ -80,7 +87,15 @@ public class AuthenticationService {
         UserEntity user = (UserEntity) authentication.getPrincipal();
         String token = jwtService.generateToken(user);
 
+        activeUserService.addActiveUser(user.getUuid());
+
         return new LoginResponse(token, jwtService.getExpirationTime());
+    }
+
+    public void logout() {
+        UUID uuid = getAuthenticatedUser().getUuid();
+        System.out.println(uuid);
+        activeUserService.removeActiveUser(uuid);
     }
 
     public UserEntity getAuthenticatedUser() {
