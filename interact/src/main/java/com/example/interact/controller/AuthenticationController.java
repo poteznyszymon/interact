@@ -4,6 +4,7 @@ import com.example.interact.dtos.authentication.LoginResponse;
 import com.example.interact.dtos.authentication.LoginUserDto;
 import com.example.interact.dtos.authentication.RegisterUserDto;
 import com.example.interact.service.AuthenticationService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,7 +22,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<LoginResponse> registerUser(@RequestBody RegisterUserDto registerUserDto) {
+    public ResponseEntity<LoginResponse> registerUser(@Valid @RequestBody RegisterUserDto registerUserDto) {
       return ResponseEntity.ok(authenticationService.registerUser(registerUserDto));
     }
 

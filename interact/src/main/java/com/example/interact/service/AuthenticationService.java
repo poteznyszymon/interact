@@ -76,7 +76,7 @@ public class AuthenticationService {
         return new LoginResponse(token, jwtService.getExpirationTime());
     }
 
-    public UserEntity getCurrentUser() {
+    public UserEntity getAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication != null && !"anonymousUser".equals(authentication.getPrincipal())) {
