@@ -54,10 +54,13 @@ public class AuthenticationService {
 
         userRepository.save(user);
 
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
+        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
                 user.getUsername(),
                 registerUserDto.getPassword()
         ));
+
+        // save current user to the context
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String token = jwtService.generateToken(user);
 
@@ -70,6 +73,10 @@ public class AuthenticationService {
                 loginUserDto.getUsername(),
                 loginUserDto.getPassword()
         ));
+
+        // save current user to the context
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
         UserEntity user = (UserEntity) authentication.getPrincipal();
         String token = jwtService.generateToken(user);
 
