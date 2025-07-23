@@ -3,13 +3,11 @@ package com.example.interact.controller;
 import com.example.interact.dtos.authentication.LoginResponse;
 import com.example.interact.dtos.authentication.LoginUserDto;
 import com.example.interact.dtos.authentication.RegisterUserDto;
+import com.example.interact.dtos.authentication.UserDto;
 import com.example.interact.service.AuthenticationService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -33,9 +31,13 @@ public class AuthenticationController {
 
     @PostMapping("/logout")
     public ResponseEntity<String> logoutUser() {
-        System.out.println("dziala");
         authenticationService.logout();
         return ResponseEntity.ok("Successfully logged out");
+    }
+
+    @GetMapping("/current")
+    public ResponseEntity<UserDto> returnAuthenticatedUser() {
+        return ResponseEntity.ok(authenticationService.getAuthenticatedUser());
     }
 
 }

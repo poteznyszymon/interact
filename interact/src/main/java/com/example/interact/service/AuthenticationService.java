@@ -3,10 +3,15 @@ package com.example.interact.service;
 import com.example.interact.dtos.authentication.LoginResponse;
 import com.example.interact.dtos.authentication.LoginUserDto;
 import com.example.interact.dtos.authentication.RegisterUserDto;
+import com.example.interact.dtos.authentication.UserDto;
 import com.example.interact.exception.AuthenticatedUserNotFoundException;
 import com.example.interact.exception.UserAlreadyExistsException;
 import com.example.interact.model.UserEntity;
 import com.example.interact.repository.UserRepository;
+import com.example.interact.utils.ModelConverter;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -15,29 +20,43 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class AuthenticationService {
+
+    @Value("app.redis.keys.blacklisted-tokens")
+    private String blacklistedTokensSet;
 
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final ActiveUserService activeUserService;
+    private final ModelConverter modelConverter;
+    private final HttpServletRequest request;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     public AuthenticationService(
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
             JwtService jwtService,
             UserRepository userRepository,
-            ActiveUserService activeUserService
+            ActiveUserService activeUserService,
+            ModelConverter modelConverter,
+            HttpServletRequest request,
+            RedisTemplate<String, Object> redisTemplate
     ) {
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userRepository = userRepository;
         this.activeUserService = activeUserService;
+        this.modelConverter = modelConverter;
+        this.request = request;
+        this.redisTemplate = redisTemplate;
     }
 
     public LoginResponse registerUser(RegisterUserDto registerUserDto) {
@@ -94,19 +113,40 @@ public class AuthenticationService {
 
     public void logout() {
         UUID uuid = getAuthenticatedUser().getUuid();
-        System.out.println(uuid);
+
+        String token = extractTokenFromRequest();
+        blacklistToken(token);
+
         activeUserService.removeActiveUser(uuid);
     }
 
-    public UserEntity getAuthenticatedUser() {
+    public UserDto getAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication != null && !"anonymousUser".equals(authentication.getPrincipal())) {
             String username = ((UserDetails) authentication.getPrincipal()).getUsername();
-            return userRepository.findByUsername(username).orElseThrow(() -> new AuthenticatedUserNotFoundException("Current user not found in database"));
+            UserEntity currentUser = userRepository.findByUsername(username).orElseThrow(() -> new AuthenticatedUserNotFoundException("Current user not found in database"));
+            return modelConverter.convert(currentUser, UserDto.class);
         }
 
         throw new AuthenticatedUserNotFoundException("No authenticated user found");
     }
+
+    private String extractTokenFromRequest() {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        return null;
+    }
+
+    private void blacklistToken(String token) {
+        Date expirationDate = jwtService.extractExpiration(token);
+        long timeLeft = expirationDate.getTime() - System.currentTimeMillis();
+
+        String redisKey = blacklistedTokensSet + ":" + token;
+        redisTemplate.opsForValue().set(redisKey, "blacklisted", timeLeft, TimeUnit.MILLISECONDS);
+    }
+
 
 }

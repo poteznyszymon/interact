@@ -68,6 +68,13 @@ public class GlobalExceptionHandler {
         return pd;
     }
 
+    @ExceptionHandler(BlacklistedTokenException.class)
+    public ProblemDetail handleBlacklistedTokenException(BlacklistedTokenException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        pd.setProperty("description", "The JWT token is blacklisted");
+        return pd;
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleValidationExceptions(MethodArgumentNotValidException exception) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");

@@ -1,5 +1,7 @@
 package com.example.interact.config;
 
+import com.example.interact.exception.BlacklistedTokenException;
+import com.example.interact.service.AuthenticationService;
 import com.example.interact.service.JwtService;
 import jakarta.annotation.Nonnull;
 import jakarta.servlet.FilterChain;
@@ -50,6 +52,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             final String token = authHeader.substring(7);
+
+            if (jwtService.isTokenBlacklisted(token)) throw new BlacklistedTokenException("Your token is blacklisted. Try to generate new.");
+
             final String username = jwtService.extractUsername(token);
 
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

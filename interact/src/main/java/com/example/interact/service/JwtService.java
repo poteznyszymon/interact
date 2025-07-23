@@ -6,6 +6,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +18,15 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
+
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    public JwtService(RedisTemplate<String, Object> redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
+
+    @Value("app.redis.keys.blacklisted-tokens")
+    private String blacklistedTokensSet;
 
     @Value("${security.jwt.secret-key}")
     private String secretKey;
@@ -63,7 +73,7 @@ public class JwtService {
         return extractExpiration(token).before(new Date());
     }
 
-    private Date extractExpiration(String token) {
+    public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
 
@@ -85,4 +95,9 @@ public class JwtService {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
+
+    public boolean isTokenBlacklisted(String token) {
+        return redisTemplate.hasKey(blacklistedTokensSet + ":" + token);
+    }
+
 }
