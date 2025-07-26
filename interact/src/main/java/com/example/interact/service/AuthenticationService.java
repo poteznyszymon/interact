@@ -9,7 +9,9 @@ import com.example.interact.exception.UserAlreadyExistsException;
 import com.example.interact.model.UserEntity;
 import com.example.interact.repository.UserRepository;
 import com.example.interact.utils.ModelConverter;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,8 +29,11 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class AuthenticationService {
 
-    @Value("app.redis.keys.blacklisted-tokens")
+    @Value("${app.redis.keys.blacklisted-tokens}")
     private String blacklistedTokensSet;
+
+    @Value("${app.jwt.access-token-name}")
+    private String accessTokenName;
 
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
@@ -38,6 +43,7 @@ public class AuthenticationService {
     private final ModelConverter modelConverter;
     private final HttpServletRequest request;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final HttpServletResponse response;
 
     public AuthenticationService(
             PasswordEncoder passwordEncoder,
@@ -47,6 +53,7 @@ public class AuthenticationService {
             ActiveUserService activeUserService,
             ModelConverter modelConverter,
             HttpServletRequest request,
+            HttpServletResponse response,
             RedisTemplate<String, Object> redisTemplate
     ) {
         this.passwordEncoder = passwordEncoder;
@@ -56,6 +63,7 @@ public class AuthenticationService {
         this.activeUserService = activeUserService;
         this.modelConverter = modelConverter;
         this.request = request;
+        this.response = response;
         this.redisTemplate = redisTemplate;
     }
 
@@ -88,7 +96,13 @@ public class AuthenticationService {
 
         String token = jwtService.generateToken(user);
 
+        // add user to active users in redis db
         activeUserService.addActiveUser(user.getUuid());
+
+        // set jwt token to cookie
+        Cookie cookie = new Cookie(accessTokenName, token);
+        System.out.println(accessTokenName);
+        response.addCookie(cookie);
 
         return new LoginResponse(token, jwtService.getExpirationTime());
 
@@ -106,18 +120,33 @@ public class AuthenticationService {
         UserEntity user = (UserEntity) authentication.getPrincipal();
         String token = jwtService.generateToken(user);
 
+        // add user to active users in redis db
         activeUserService.addActiveUser(user.getUuid());
+
+        // set jwt token to cookie
+        Cookie cookie = new Cookie(accessTokenName, token);
+        cookie.setHttpOnly(true);
+        /// cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge((int) jwtService.getExpirationTime());
+        response.addCookie(cookie);
 
         return new LoginResponse(token, jwtService.getExpirationTime());
     }
 
     public void logout() {
+        /// remove user from acitve users
         UUID uuid = getAuthenticatedUser().getUuid();
-
-        String token = extractTokenFromRequest();
-        blacklistToken(token);
-
         activeUserService.removeActiveUser(uuid);
+
+        ///  delete cookie with token from cookie
+        Cookie cookie = new Cookie(accessTokenName, null);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+
     }
 
     public UserDto getAuthenticatedUser() {
@@ -132,13 +161,23 @@ public class AuthenticationService {
         throw new AuthenticatedUserNotFoundException("No authenticated user found");
     }
 
-    private String extractTokenFromRequest() {
+    private String extractTokenFromRequest(HttpServletRequest request) {
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if (cookie.getName().equals(accessTokenName)) {
+                    return cookie.getValue();
+                }
+            }
+        }
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
         }
+
         return null;
     }
+
 
     private void blacklistToken(String token) {
         Date expirationDate = jwtService.extractExpiration(token);

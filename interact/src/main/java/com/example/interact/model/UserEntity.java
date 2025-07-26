@@ -41,11 +41,15 @@ public class UserEntity implements UserDetails {
     @Column(nullable = false)
     private String password;
 
+    @OneToOne
+    @JoinColumn(name = "avatar_id")
+    private AtachmentEntity avatar;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
+        @UpdateTimestamp
     private LocalDateTime updatedAt;
 
     private LocalDateTime lastActiveAt;

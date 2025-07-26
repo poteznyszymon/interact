@@ -10,7 +10,7 @@ import java.util.UUID;
 @Service
 public class ActiveUserService {
 
-    @Value("app.redis.keys.active-users")
+    @Value("${app.redis.keys.active-users}")
     private String activeUsersRedisKey;
 
     private final RedisTemplate<String, Object> redisTemplate;

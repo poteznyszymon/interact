@@ -25,7 +25,7 @@ public class JwtService {
         this.redisTemplate = redisTemplate;
     }
 
-    @Value("app.redis.keys.blacklisted-tokens")
+    @Value("${app.redis.keys.blacklisted-tokens}")
     private String blacklistedTokensSet;
 
     @Value("${security.jwt.secret-key}")

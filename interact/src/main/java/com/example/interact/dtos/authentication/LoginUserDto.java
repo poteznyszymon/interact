@@ -1,5 +1,6 @@
 package com.example.interact.dtos.authentication;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -7,7 +8,9 @@ import lombok.Data;
 @AllArgsConstructor
 public class LoginUserDto {
 
+    @NotBlank
     private String username;
+    @NotBlank
     private String password;
 
 }
